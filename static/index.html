@@ -1,0 +1,1057 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Vector Database Search</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 15px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+            overflow: hidden;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 30px;
+            text-align: center;
+        }
+
+        .header h1 {
+            font-size: 2.5em;
+            margin-bottom: 10px;
+        }
+
+        .header p {
+            font-size: 1.1em;
+            opacity: 0.9;
+        }
+
+        .content {
+            padding: 40px;
+        }
+
+        .section {
+            margin-bottom: 40px;
+            padding: 30px;
+            border: 1px solid #e1e5e9;
+            border-radius: 10px;
+            background: #f8f9fa;
+        }
+
+        .section h2 {
+            color: #333;
+            margin-bottom: 20px;
+            font-size: 1.5em;
+        }
+
+        .upload-area {
+            border: 2px dashed #667eea;
+            border-radius: 10px;
+            padding: 40px;
+            text-align: center;
+            background: white;
+            transition: all 0.3s ease;
+            cursor: pointer;
+        }
+
+        .upload-area:hover {
+            border-color: #764ba2;
+            background: #f8f9ff;
+        }
+
+        .upload-area.dragover {
+            border-color: #764ba2;
+            background: #f0f2ff;
+        }
+
+        .upload-icon {
+            font-size: 3em;
+            color: #667eea;
+            margin-bottom: 15px;
+        }
+
+        .file-input {
+            display: none;
+        }
+
+        .search-container {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+
+        .search-input-group {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+        }
+
+        .search-input {
+            flex: 1;
+            padding: 12px 15px;
+            border: 2px solid #e1e5e9;
+            border-radius: 8px;
+            font-size: 16px;
+            transition: border-color 0.3s ease;
+        }
+
+        .search-input:focus {
+            outline: none;
+            border-color: #007bff;
+        }
+
+        .file-type-filter {
+            padding: 12px 15px;
+            border: 2px solid #e1e5e9;
+            border-radius: 8px;
+            font-size: 16px;
+            background: white;
+            min-width: 150px;
+        }
+
+        .search-btn {
+            padding: 12px 25px;
+            background: #007bff;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background-color 0.3s ease;
+        }
+
+        .search-btn:hover {
+            background: #0056b3;
+        }
+
+        .search-options {
+            display: flex;
+            gap: 20px;
+            align-items: center;
+            padding: 15px;
+            background: #f8f9fa;
+            border-radius: 8px;
+            flex-wrap: wrap;
+        }
+
+        .search-options label {
+            font-weight: 500;
+            color: #495057;
+        }
+
+        .score-slider {
+            width: 150px;
+            height: 6px;
+            border-radius: 3px;
+            background: #ddd;
+            outline: none;
+            -webkit-appearance: none;
+        }
+
+        .score-slider::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 18px;
+            height: 18px;
+            border-radius: 50%;
+            background: #007bff;
+            cursor: pointer;
+        }
+
+        .score-slider::-moz-range-thumb {
+            width: 18px;
+            height: 18px;
+            border-radius: 50%;
+            background: #007bff;
+            cursor: pointer;
+            border: none;
+        }
+
+        .limit-input {
+            width: 80px;
+            padding: 8px 12px;
+            border: 2px solid #e1e5e9;
+            border-radius: 6px;
+            font-size: 14px;
+        }
+
+        .search-summary {
+            margin-bottom: 20px;
+            padding: 15px;
+            background: #e3f2fd;
+            border-radius: 8px;
+            border-left: 4px solid #2196f3;
+        }
+
+        .search-summary h3 {
+            margin: 0;
+            color: #1976d2;
+        }
+
+        .results-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
+            gap: 20px;
+        }
+
+        .result-card {
+            background: white;
+            border: 1px solid #e1e5e9;
+            border-radius: 12px;
+            padding: 20px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            transition: transform 0.2s ease, box-shadow 0.2s ease;
+            min-height: 140px;
+        }
+
+        .result-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 16px rgba(0,0,0,0.15);
+        }
+
+        .result-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+        }
+
+        .file-type-badge {
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 600;
+            text-transform: uppercase;
+        }
+
+        .file-type-badge.text {
+            background: #e3f2fd;
+            color: #1976d2;
+        }
+
+        .file-type-badge.image {
+            background: #f3e5f5;
+            color: #7b1fa2;
+        }
+
+        .file-type-badge.video {
+            background: #fff3e0;
+            color: #f57c00;
+        }
+
+        .score-badge {
+            padding: 4px 8px;
+            border-radius: 12px;
+            font-size: 12px;
+            font-weight: 600;
+            color: white;
+        }
+
+        .result-content h4 {
+            margin: 0 0 10px 0;
+            color: #212529;
+            font-size: 16px;
+        }
+
+        .result-preview {
+            display: flex;
+            gap: 15px;
+            align-items: flex-start;
+        }
+
+        .result-info {
+            flex: 1;
+        }
+
+        .result-info h4 {
+            margin: 0 0 8px 0;
+            color: #212529;
+            font-size: 16px;
+        }
+
+        .file-id {
+            margin: 5px 0;
+            font-size: 12px;
+            color: #6c757d;
+        }
+
+        .score-detail {
+            margin: 5px 0;
+            font-size: 14px;
+            color: #495057;
+            font-weight: 500;
+        }
+
+        .result-actions {
+            margin-top: 15px;
+            padding-top: 15px;
+            border-top: 1px solid #e1e5e9;
+        }
+
+        .btn-sm {
+            padding: 6px 12px;
+            font-size: 12px;
+        }
+
+        .no-results {
+            text-align: center;
+            padding: 40px;
+            color: #6c757d;
+            font-size: 16px;
+        }
+
+        .btn {
+            padding: 12px 25px;
+            border: none;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-decoration: none;
+            display: inline-block;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+        }
+
+        .btn-secondary {
+            background: #6c757d;
+            color: white;
+        }
+
+        .btn-secondary:hover {
+            background: #5a6268;
+        }
+
+        .btn-danger {
+            background: #dc3545;
+            color: white;
+        }
+
+        .btn-danger:hover {
+            background: #c82333;
+        }
+
+        .file-actions {
+            display: flex;
+            gap: 10px;
+            margin-top: 10px;
+        }
+
+        .btn-small {
+            padding: 6px 12px;
+            font-size: 0.9em;
+        }
+
+        .delete-confirm {
+            background: #fff3cd;
+            color: #856404;
+            padding: 10px;
+            border-radius: 5px;
+            margin-top: 10px;
+            display: none;
+        }
+
+        .delete-confirm.show {
+            display: block;
+        }
+
+        .results {
+            margin-top: 20px;
+        }
+
+        .result-item {
+            background: white;
+            border: 1px solid #e1e5e9;
+            border-radius: 8px;
+            padding: 20px;
+            margin-bottom: 15px;
+            transition: all 0.3s ease;
+        }
+
+        .result-item:hover {
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+            transform: translateY(-2px);
+        }
+
+        .result-title {
+            font-weight: 600;
+            color: #333;
+        }
+
+        .result-score {
+            background: #667eea;
+            color: white;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 0.9em;
+        }
+
+        .result-meta {
+            color: #666;
+            font-size: 0.9em;
+        }
+
+        .file-list {
+            display: grid;
+            gap: 15px;
+        }
+
+        .file-item {
+            background: white;
+            border: 1px solid #e1e5e9;
+            border-radius: 8px;
+            padding: 20px;
+            transition: all 0.3s ease;
+        }
+
+        .file-item:hover {
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+        }
+
+        .file-preview {
+            display: flex;
+            gap: 15px;
+            align-items: flex-start;
+        }
+
+        .file-thumbnail {
+            width: 80px;
+            height: 80px;
+            border-radius: 8px;
+            object-fit: cover;
+            border: 2px solid #e1e5e9;
+            background: #f8f9fa;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 24px;
+            color: #6c757d;
+        }
+
+        .file-info {
+            flex: 1;
+        }
+
+        .file-type-badge {
+            display: inline-block;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 0.8em;
+            font-weight: 600;
+            margin-left: 10px;
+        }
+
+        .badge-text { background: #28a745; color: white; }
+        .badge-image { background: #17a2b8; color: white; }
+        .badge-video { background: #dc3545; color: white; }
+
+        .loading {
+            text-align: center;
+            padding: 40px;
+            color: #666;
+        }
+
+        .error {
+            background: #f8d7da;
+            color: #721c24;
+            padding: 15px;
+            border-radius: 8px;
+            margin: 20px 0;
+        }
+
+        .success {
+            background: #d4edda;
+            color: #155724;
+            padding: 15px;
+            border-radius: 8px;
+            margin: 20px 0;
+        }
+
+        .tabs {
+            display: flex;
+            margin-bottom: 30px;
+            border-bottom: 2px solid #e1e5e9;
+        }
+
+        .tab {
+            padding: 15px 30px;
+            cursor: pointer;
+            border-bottom: 3px solid transparent;
+            transition: all 0.3s ease;
+        }
+
+        .tab.active {
+            border-bottom-color: #667eea;
+            color: #667eea;
+            font-weight: 600;
+        }
+
+        .tab:hover {
+            background: #f8f9fa;
+        }
+
+        .tab-content {
+            display: none;
+        }
+
+        .tab-content.active {
+            display: block;
+        }
+
+        /* 이미지 모달 스타일 */
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 1000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0,0,0,0.8);
+        }
+
+        .modal-content {
+            margin: auto;
+            display: block;
+            max-width: 90%;
+            max-height: 90%;
+            margin-top: 5%;
+        }
+
+        .modal-close {
+            position: absolute;
+            top: 15px;
+            right: 35px;
+            color: #f1f1f1;
+            font-size: 40px;
+            font-weight: bold;
+            cursor: pointer;
+        }
+
+        .modal-close:hover {
+            color: #bbb;
+        }
+
+        .file-thumbnail img {
+            cursor: pointer;
+            transition: transform 0.2s ease;
+        }
+
+        .file-thumbnail img:hover {
+            transform: scale(1.05);
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🔍 Vector Database Search</h1>
+            <p>텍스트, 이미지, 영상을 업로드하고 벡터 검색을 수행하세요</p>
+        </div>
+
+        <div class="content">
+            <div class="tabs">
+                <div class="tab active" onclick="showTab('upload')">📤 파일 업로드</div>
+                <div class="tab" onclick="showTab('search')">🔍 벡터 검색</div>
+                <div class="tab" onclick="showTab('files')">📁 파일 목록</div>
+            </div>
+
+            <!-- 업로드 탭 -->
+            <div id="upload-tab" class="tab-content active">
+                <div class="section">
+                    <h2>파일 업로드</h2>
+                    <div class="upload-area" onclick="document.getElementById('file-input').click()">
+                        <div class="upload-icon">📁</div>
+                        <p>클릭하여 파일을 선택하거나 여기에 파일을 드래그하세요</p>
+                        <p style="font-size: 0.9em; color: #666; margin-top: 10px;">
+                            지원 형식: 텍스트 (.txt, .md, .py, .js, .html, .css, .json, .xml, .csv)<br>
+                            이미지 (.jpg, .jpeg, .png, .gif, .bmp, .tiff, .webp)<br>
+                            영상 (.mp4, .avi, .mov, .wmv, .flv, .webm, .mkv)
+                        </p>
+                    </div>
+                    <input type="file" id="file-input" class="file-input" accept=".txt,.md,.py,.js,.html,.css,.json,.xml,.csv,.jpg,.jpeg,.png,.gif,.bmp,.tiff,.webp,.mp4,.avi,.mov,.wmv,.flv,.webm,.mkv">
+                    <div id="upload-status"></div>
+                </div>
+            </div>
+
+            <!-- 검색 탭 -->
+            <div id="search-tab" class="tab-content">
+                <div class="section">
+                    <h2>벡터 검색</h2>
+                    <div class="search-container">
+                        <div class="search-input-group">
+                            <input type="text" id="searchInput" placeholder="검색어를 입력하세요..." class="search-input">
+                            <select id="fileTypeFilter" class="file-type-filter">
+                                <option value="">모든 파일 타입</option>
+                                <option value="text">텍스트</option>
+                                <option value="image">이미지</option>
+                                <option value="video">영상</option>
+                            </select>
+                            <button onclick="searchFiles()" class="search-btn">검색</button>
+                        </div>
+                        <div class="search-options">
+                            <label for="minScoreSlider">최소 유사도 점수: <span id="minScoreValue">0.1</span></label>
+                            <input type="range" id="minScoreSlider" min="0.0" max="1.0" step="0.05" value="0.1" class="score-slider">
+                            <label for="limitInput">결과 수: </label>
+                            <input type="number" id="limitInput" min="1" max="100" value="10" class="limit-input">
+                            <div style="margin-top: 10px; padding: 10px; background: #f8f9fa; border-radius: 5px; font-size: 0.9em;">
+                                <strong>파일 타입별 권장 임계값:</strong><br>
+                                📄 텍스트: 0.2 | 🖼️ 이미지: 0.3 | 🎬 비디오: 0.25
+                            </div>
+                        </div>
+                    </div>
+                    <div id="search-results"></div>
+                </div>
+            </div>
+
+            <!-- 파일 목록 탭 -->
+            <div id="files-tab" class="tab-content">
+                <div class="section">
+                    <h2>업로드된 파일 목록</h2>
+                    <button onclick="loadFiles()" class="btn btn-secondary">새로고침</button>
+                    <div id="files-list"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 이미지 모달 -->
+    <div id="imageModal" class="modal">
+        <span class="modal-close" onclick="closeImageModal()">&times;</span>
+        <img class="modal-content" id="modalImage">
+    </div>
+
+    <script>
+        const API_BASE = 'http://localhost:8000';
+
+        // 탭 전환
+        function showTab(tabName) {
+            // 모든 탭 비활성화
+            document.querySelectorAll('.tab').forEach(tab => tab.classList.remove('active'));
+            document.querySelectorAll('.tab-content').forEach(content => content.classList.remove('active'));
+            
+            // 선택된 탭 활성화
+            event.target.classList.add('active');
+            document.getElementById(tabName + '-tab').classList.add('active');
+            
+            // 탭별 초기 로드
+            if (tabName === 'files') {
+                loadFiles();
+            }
+        }
+
+        // 파일 업로드
+        document.getElementById('file-input').addEventListener('change', async function(e) {
+            const file = e.target.files[0];
+            if (!file) return;
+
+            const statusDiv = document.getElementById('upload-status');
+            statusDiv.innerHTML = '<div class="loading">파일을 업로드하고 벡터화하는 중...</div>';
+
+            const formData = new FormData();
+            formData.append('file', file);
+
+            try {
+                const response = await fetch(`${API_BASE}/upload`, {
+                    method: 'POST',
+                    body: formData
+                });
+
+                const result = await response.json();
+
+                if (response.ok) {
+                    statusDiv.innerHTML = `
+                        <div class="success">
+                            ✅ 파일 업로드 성공!<br>
+                            파일명: ${result.filename}<br>
+                            타입: ${result.file_type}<br>
+                            크기: ${formatFileSize(result.file_size)}
+                        </div>
+                    `;
+                } else {
+                    statusDiv.innerHTML = `<div class="error">❌ 업로드 실패: ${result.detail}</div>`;
+                }
+            } catch (error) {
+                statusDiv.innerHTML = `<div class="error">❌ 오류 발생: ${error.message}</div>`;
+            }
+
+            // 파일 입력 초기화
+            e.target.value = '';
+        });
+
+        // 드래그 앤 드롭
+        const uploadArea = document.querySelector('.upload-area');
+        
+        uploadArea.addEventListener('dragover', function(e) {
+            e.preventDefault();
+            uploadArea.classList.add('dragover');
+        });
+
+        uploadArea.addEventListener('dragleave', function(e) {
+            e.preventDefault();
+            uploadArea.classList.remove('dragover');
+        });
+
+        uploadArea.addEventListener('drop', function(e) {
+            e.preventDefault();
+            uploadArea.classList.remove('dragover');
+            
+            const files = e.dataTransfer.files;
+            if (files.length > 0) {
+                document.getElementById('file-input').files = files;
+                document.getElementById('file-input').dispatchEvent(new Event('change'));
+            }
+        });
+
+        // 벡터 검색
+        async function searchFiles() {
+            const query = document.getElementById('searchInput').value.trim();
+            const fileType = document.getElementById('fileTypeFilter').value;
+            const minScore = document.getElementById('minScoreSlider').value;
+            const limit = document.getElementById('limitInput').value;
+            const resultsDiv = document.getElementById('search-results');
+
+            if (!query) {
+                alert('검색어를 입력해주세요.');
+                return;
+            }
+
+            try {
+                resultsDiv.innerHTML = '<div class="loading">검색 중...</div>';
+
+                const params = new URLSearchParams({
+                    query: query,
+                    min_score: minScore,
+                    limit: limit
+                });
+                
+                if (fileType) {
+                    params.append('file_type', fileType);
+                }
+
+                const response = await fetch(`${API_BASE}/search?${params}`);
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+
+                const data = await response.json();
+                displaySearchResults(data);
+                
+            } catch (error) {
+                console.error('Search error:', error);
+                resultsDiv.innerHTML = `<div class="error">검색 중 오류가 발생했습니다: ${error.message}</div>`;
+            }
+        }
+
+        // 검색 결과 표시
+        function displaySearchResults(data) {
+            const resultsDiv = document.getElementById('search-results');
+            
+            if (!data.results || data.results.length === 0) {
+                resultsDiv.innerHTML = '<div class="no-results">검색 결과가 없습니다.</div>';
+                return;
+            }
+
+            let html = `
+                <div class="search-summary">
+                    <h3>"${data.query}" 검색 결과 (${data.total}개)</h3>
+                    <p style="margin-top: 10px; font-size: 0.9em; color: #666;">
+                        💡 이미지 검색은 더 높은 임계값(0.3)을 적용하여 정확도를 높였습니다.
+                    </p>
+                </div>
+                <div class="results-grid">
+            `;
+
+            data.results.forEach(result => {
+                // cosine similarity를 0-100%로 정규화
+                const normalizedScore = (result.score + 1) / 2;
+                const scorePercent = Math.round(normalizedScore * 100);
+                const scoreColor = getScoreColor(result.score, result.file_type);
+                const thumbnail = getSearchResultThumbnail(result);
+                const confidenceLevel = getConfidenceLevel(result.score, result.file_type);
+                
+                html += `
+                    <div class="result-card">
+                        <div class="result-header">
+                            <span class="file-type-badge ${result.file_type}">${result.file_type}</span>
+                            <span class="score-badge" style="background-color: ${scoreColor}">${scorePercent}%</span>
+                        </div>
+                        <div class="result-content">
+                            <div class="result-preview">
+                                <div class="file-thumbnail">
+                                    ${thumbnail}
+                                </div>
+                                <div class="result-info">
+                                    <h4>${result.filename}</h4>
+                                    <p class="file-id">ID: ${result.file_id}</p>
+                                    <p class="score-detail">유사도 점수: ${result.score.toFixed(4)} (정규화: ${normalizedScore.toFixed(4)})</p>
+                                    <p class="confidence-level" style="font-size: 0.8em; color: ${scoreColor}; font-weight: 600;">
+                                        ${confidenceLevel}
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="result-actions">
+                            <button onclick="deleteFile('${result.file_id}')" class="btn btn-danger btn-sm">삭제</button>
+                        </div>
+                    </div>
+                `;
+            });
+
+            html += '</div>';
+            resultsDiv.innerHTML = html;
+        }
+
+        // 점수에 따른 색상 결정 (파일 타입별로 다른 기준)
+        function getScoreColor(score, fileType) {
+            // cosine similarity는 -1~1 범위이므로 0~1로 정규화
+            const normalizedScore = (score + 1) / 2;
+            
+            if (fileType === 'image') {
+                // 이미지는 더 높은 임계값 적용
+                if (normalizedScore > 0.7) return '#4CAF50';  // 높음
+                if (normalizedScore > 0.5) return '#FF9800';  // 중간
+                return '#F44336';  // 낮음
+            } else {
+                // 텍스트/비디오는 기존 기준
+                if (normalizedScore > 0.7) return '#4CAF50';  // 높음
+                if (normalizedScore > 0.5) return '#FF9800';  // 중간
+                return '#F44336';  // 낮음
+            }
+        }
+
+        // 신뢰도 레벨 표시
+        function getConfidenceLevel(score, fileType) {
+            // cosine similarity는 -1~1 범위이므로 0~1로 정규화
+            const normalizedScore = (score + 1) / 2;
+            
+            if (fileType === 'image') {
+                if (normalizedScore > 0.7) return '🔍 매우 관련성 높음';
+                if (normalizedScore > 0.5) return '🔍 관련성 있음';
+                return '🔍 관련성 낮음';
+            } else {
+                if (normalizedScore > 0.7) return '📄 매우 관련성 높음';
+                if (normalizedScore > 0.5) return '📄 관련성 있음';
+                return '📄 관련성 낮음';
+            }
+        }
+
+        // 검색 결과용 썸네일 생성
+        function getSearchResultThumbnail(result) {
+            const fileType = result.file_type;
+            const filename = result.filename;
+            
+            if (fileType === 'image') {
+                // 이미지 파일인 경우 실제 썸네일 표시
+                const imageUrl = `/files/${result.file_id}/preview`;
+                return `<img src="${imageUrl}" alt="${filename}" style="width: 100%; height: 100%; object-fit: cover; border-radius: 6px;" onclick="openImageModal('${imageUrl}', '${filename}')">`;
+            } else if (fileType === 'video') {
+                // 비디오 파일인 경우 비디오 아이콘
+                return '🎬';
+            } else if (fileType === 'text') {
+                // 텍스트 파일인 경우 텍스트 아이콘
+                return '📄';
+            } else {
+                // 기타 파일 타입
+                return '📁';
+            }
+        }
+
+        // 파일 목록 로드
+        async function loadFiles() {
+            const filesDiv = document.getElementById('files-list');
+            filesDiv.innerHTML = '<div class="loading">파일 목록을 불러오는 중...</div>';
+
+            try {
+                const response = await fetch(`${API_BASE}/files?limit=100`);
+                const result = await response.json();
+
+                if (response.ok) {
+                    displayFilesList(result);
+                } else {
+                    filesDiv.innerHTML = `<div class="error">❌ 파일 목록 로드 실패: ${result.detail}</div>`;
+                }
+            } catch (error) {
+                filesDiv.innerHTML = `<div class="error">❌ 오류 발생: ${error.message}</div>`;
+            }
+        }
+
+        // 파일 목록 표시
+        function displayFilesList(result) {
+            const filesDiv = document.getElementById('files-list');
+            
+            if (result.files.length === 0) {
+                filesDiv.innerHTML = '<div class="loading">업로드된 파일이 없습니다.</div>';
+                return;
+            }
+
+            let html = `<h3>업로드된 파일 (${result.total}개)</h3><div class="file-list">`;
+            
+            result.files.forEach(file => {
+                const badgeClass = `badge-${file.file_type}`;
+                const thumbnail = getFileThumbnail(file);
+                
+                html += `
+                    <div class="file-item">
+                        <div class="file-preview">
+                            <div class="file-thumbnail">
+                                ${thumbnail}
+                            </div>
+                            <div class="file-info">
+                                <div class="result-header">
+                                    <div class="result-title">
+                                        ${file.filename}
+                                        <span class="file-type-badge ${badgeClass}">${file.file_type}</span>
+                                    </div>
+                                </div>
+                                <div class="result-meta">
+                                    파일 ID: ${file.file_id}<br>
+                                    크기: ${formatFileSize(file.file_size)}<br>
+                                    업로드 시간: ${new Date(file.upload_time).toLocaleString()}
+                                </div>
+                                <div class="file-actions">
+                                    <button class="btn btn-danger btn-small" onclick="deleteFile('${file.file_id}')">삭제</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            });
+
+            html += '</div>';
+            filesDiv.innerHTML = html;
+        }
+
+        // 파일 타입에 따른 썸네일 생성
+        function getFileThumbnail(file) {
+            const fileType = file.file_type;
+            const filename = file.filename;
+            
+            if (fileType === 'image') {
+                // 이미지 파일인 경우 실제 썸네일 표시
+                const imageUrl = `/files/${file.file_id}/preview`;
+                return `<img src="${imageUrl}" alt="${filename}" style="width: 100%; height: 100%; object-fit: cover; border-radius: 6px;" onclick="openImageModal('${imageUrl}', '${filename}')">`;
+            } else if (fileType === 'video') {
+                // 비디오 파일인 경우 비디오 아이콘
+                return '🎬';
+            } else if (fileType === 'text') {
+                // 텍스트 파일인 경우 텍스트 아이콘
+                return '📄';
+            } else {
+                // 기타 파일 타입
+                return '📁';
+            }
+        }
+
+        // 이미지 모달 열기
+        function openImageModal(imageUrl, filename) {
+            const modal = document.getElementById('imageModal');
+            const modalImg = document.getElementById('modalImage');
+            
+            modalImg.src = imageUrl;
+            modalImg.alt = filename;
+            modal.style.display = "block";
+        }
+
+        // 이미지 모달 닫기
+        function closeImageModal() {
+            const modal = document.getElementById('imageModal');
+            modal.style.display = "none";
+        }
+
+        // 모달 외부 클릭 시 닫기
+        window.onclick = function(event) {
+            const modal = document.getElementById('imageModal');
+            if (event.target === modal) {
+                modal.style.display = "none";
+            }
+        }
+
+        // 파일 크기 포맷팅
+        function formatFileSize(bytes) {
+            if (bytes === 0) return '0 Bytes';
+            const k = 1024;
+            const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+            const i = Math.floor(Math.log(bytes) / Math.log(k));
+            return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + ' ' + sizes[i];
+        }
+
+        // 파일 삭제
+        async function deleteFile(fileId) {
+            if (!confirm('정말로 이 파일을 삭제하시겠습니까?')) {
+                return;
+            }
+
+            try {
+                const response = await fetch(`${API_BASE}/files/${fileId}`, {
+                    method: 'DELETE'
+                });
+
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+
+                alert('파일이 삭제되었습니다.');
+                loadFiles(); // 파일 목록 새로고침
+                
+                // 검색 결과가 있다면 다시 검색
+                const query = document.getElementById('searchInput').value.trim();
+                if (query) {
+                    searchFiles();
+                }
+                
+            } catch (error) {
+                console.error('Delete error:', error);
+                alert(`삭제 중 오류가 발생했습니다: ${error.message}`);
+            }
+        }
+
+        // 슬라이더 이벤트 리스너
+        document.getElementById('minScoreSlider').addEventListener('input', function() {
+            document.getElementById('minScoreValue').textContent = this.value;
+        });
+
+        // Enter 키로 검색
+        document.getElementById('searchInput').addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                searchFiles();
+            }
+        });
+
+        // 페이지 로드 시 초기화
+        document.addEventListener('DOMContentLoaded', function() {
+            loadFiles();
+        });
+    </script>
+</body>
+</html> 
